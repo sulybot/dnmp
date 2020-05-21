@@ -1,0 +1,93 @@
+version: "3"
+
+services:
+
+# nginx
+  nginx:
+    build:
+      context: ./services/nginx
+      args:
+        NGINX_VERSION: ${NGINX_VERSION}
+        ALPINE_PACKAGE_REPO_MIRROR: ${ALPINE_PACKAGE_REPO_MIRROR}
+        TZ: ${TZ}
+    ports:
+      - "${NGINX_HTTP_HOST_PORT}:80"
+      - "${NGINX_HTTPS_HOST_PORT}:443"
+    volumes:
+      - nginx_conf:/etc/nginx
+      - ./www:/usr/share/nginx
+      - ./logs/nginx:/var/log/nginx
+    restart: always
+    networks:
+      - dnmp
+
+# php
+  php:
+    build:
+      context: ./services/php-fpm
+      args:
+        ALPINE_PACKAGE_REPO_MIRROR: ${ALPINE_PACKAGE_REPO_MIRROR}
+        TZ: ${TZ}
+        PHP_INI_ENV: ${PHP_INI_ENV}
+        PHP_EXTENSIONS: ${PHP_EXTENSIONS}
+    volumes:
+      - php_conf:/usr/local/etc
+      - ./www:/usr/share/nginx
+      - ./logs/php:/var/log/php
+    restart: always
+    networks:
+      - dnmp
+
+# mysql
+  mysql:
+    build:
+      context: ./services/mysql
+      args:
+        MYSQL_VERSION: ${MYSQL_VERSION}
+        TZ: ${TZ}
+    ports:
+      - "${MYSQL_HOST_PORT}:3306"
+    volumes:
+      - mysql_conf:/etc/mysql
+      - mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+      TZ: ${TZ}
+    restart: always
+    networks:
+      - dnmp
+
+  redis:
+    build:
+      context: ./services/redis
+      args:
+        REDIS_VERSION: ${REDIS_VERSION}-alpine
+    ports:
+      - ${REDIS_HOST_PORT}:6379
+    volumes:
+      - redis_conf:/usr/local/etc/redis
+      - redis_data:/data
+    restart: always
+    networks:
+      - dnmp
+
+
+volumes:
+  nginx_conf:
+    driver: ${VOLUME_DRIVER}
+  php_conf:
+    driver: ${VOLUME_DRIVER}
+  mysql_conf:
+    driver: ${VOLUME_DRIVER}
+  redis_conf:
+    driver: ${VOLUME_DRIVER}
+
+
+  mysql_data:
+    driver: ${VOLUME_DRIVER}
+  redis_data:
+    driver: ${VOLUME_DRIVER}
+
+networks:
+  dnmp:
+    driver: bridge
